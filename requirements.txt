@@ -1,0 +1,10 @@
+ollama
+faster-whisper
+pyttsx3
+rich
+pydantic-settings
+SpeechRecognition
+pyaudio
+pywin32
+python-dotenv
+aiohttp
