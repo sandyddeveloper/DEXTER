@@ -11,8 +11,9 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     
     # STT Settings (Whisper)
-    WHISPER_MODEL: str = "base"  # options: tiny, base, small, medium, large
-    WHISPER_DEVICE: str = "cpu"  # set to "cuda" if GPU is available
+    WHISPER_BOOT_MODEL: str = "tiny" # For ultra-fast startup
+    WHISPER_MAIN_MODEL: str = "base" # For session-long accuracy
+    WHISPER_DEVICE: str = "cpu"      # set to "cuda" if GPU is available
     
     # TTS Settings
     TTS_VOICE_INDEX: int = 0  # Index of the voice to use in pyttsx3

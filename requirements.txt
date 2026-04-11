@@ -8,3 +8,12 @@ pyaudio
 pywin32
 python-dotenv
 aiohttp
+pywebview
+fastapi
+uvicorn
+jinja2
+psutil
+screen_brightness_control
+pycaw
+pygetwindow
+keyboard

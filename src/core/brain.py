@@ -1,6 +1,7 @@
 import ollama
 from src.config import settings
 from src.skills.app_control import SKILLS as APP_SKILLS
+from src.skills.system_control import SYSTEM_SKILLS
 import logging
 import re
 
@@ -12,20 +13,26 @@ class Brain:
         self.history = []
         
         # Merge all skills
-        self.skills = {**APP_SKILLS}
+        self.skills = {**APP_SKILLS, **SYSTEM_SKILLS}
         
     def get_system_prompt(self):
         skills_desc = "\n".join([f"- {name}: {func.__doc__}" for name, func in self.skills.items()])
         
         return f"""{settings.PERSONALITY}
 
-You have the ability to control the user's computer using the following skills:
+You have control over the user's Windows system using these tools:
 {skills_desc}
 
-If you need to use a skill, include the following format in your response: [[ACTION: skill_name]].
-For example, if the user asks to open Chrome, you should say "Certainly, sir. Opening Chrome now. [[ACTION: open_chrome]]"
+RULES:
+1. To use a tool, output: [[ACTION: tool_name, argument]]
+2. If argument is not needed, leave it empty: [[ACTION: tool_name]]
+3. For 'lock_pc', you MUST ask for confirmation first unless the user explicitly said "DEXTER, I am leaving, lock the PC".
 
-Respond naturally and professionally, like JARVIS.
+Examples:
+- User: "Search for Iron Man" -> "Accessing web archives. [[ACTION: search_web, Iron Man]]"
+- User: "Mute the audio" -> "Certainly, sir. Silencing systems. [[ACTION: set_volume, 0]]"
+- User: "Set brightness to 80" -> "Adjusting displays. [[ACTION: set_brightness, 80]]"
+- User: "Next song" -> "Skipping tracks. [[ACTION: control_media, next]]"
 """
 
     def add_to_history(self, role, content):
@@ -50,23 +57,33 @@ Respond naturally and professionally, like JARVIS.
             assistant_response = response['message']['content']
             self.add_to_history("assistant", assistant_response)
             
-            # Check for actions
-            action_match = re.search(r"\[\[ACTION: (.*?)\]\]", assistant_response)
-            action_result = None
+            # Action Parsing
+            # Format: [[ACTION: name, arg]]
+            action_match = re.search(r"\[\[ACTION: (.*?)(?:, (.*?))?\]\]", assistant_response)
             
             if action_match:
                 skill_name = action_match.group(1).strip()
+                arg = action_match.group(2).strip() if action_match.group(2) else None
+                
                 if skill_name in self.skills:
-                    logger.info(f"Executing skill: {skill_name}")
-                    action_result = self.skills[skill_name]()
-                    # Optionally append the result to the response or just let it happen
-                    if action_result:
-                        assistant_response = assistant_response.replace(action_match.group(0), f"\n(System: {action_result})")
+                    # Execute
+                    if arg:
+                        # Try to parse if it's an int for volume/brightness
+                        try:
+                            if skill_name in ['set_volume', 'set_brightness']:
+                                arg = int(arg)
+                        except: pass
+                        result = self.skills[skill_name](arg)
+                    else:
+                        result = self.skills[skill_name]()
+                        
+                    if result:
+                        assistant_response = assistant_response.replace(action_match.group(0), f"\n(Result: {result})")
             
             return assistant_response
             
         except Exception as e:
             logger.error(f"Error in brain: {e}")
-            return "I am experiencing localized cognitive interference. Please check my Ollama connection."
+            return "Cognitive functions are slightly out of sync, sir. Please stand by."
 
 brain = Brain()
